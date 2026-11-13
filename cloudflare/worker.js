@@ -43,6 +43,12 @@ const CORS_HEADERS = {
 // -----------------------------------------------------------------------------
 
 const VALID_CLOUDCODE_MODELS = new Set([
+  // Gemini 4 Hydrogen
+  "gemini-4-hydrogen",
+  "gemini-4-hydrogen-extra",
+  "gemini-4-hydrogen-high",
+  "gemini-4-hydrogen-medium",
+  "gemini-4-hydrogen-low",
   // Gemini 4 Argon
   "gemini-4-argon",
   "gemini-4-argon-high",
@@ -84,6 +90,11 @@ const VALID_CLOUDCODE_MODELS = new Set([
   "gemini-2.5-flash-lite",
   "gemini-2.5-flash-thinking",
   // Gemini Web browser models
+  "gemini-4-hydrogen-web",
+  "gemini-4-hydrogen-web-extra",
+  "gemini-4-hydrogen-web-high",
+  "gemini-4-hydrogen-web-medium",
+  "gemini-4-hydrogen-web-low",
   "gemini-4-argon-web-high",
   "gemini-4-argon-web-medium",
   "gemini-4-argon-web-low",
@@ -111,6 +122,13 @@ const VALID_CLOUDCODE_MODELS = new Set([
 ]);
 
 const MODEL_ALIASES = {
+  "gemini-4-hydrogen": "gemini-4-hydrogen",
+  "gemini-4-hydrogen-extra": "gemini-4-hydrogen-extra",
+  "gemini-4-hydrogen-xhigh": "gemini-4-hydrogen-extra",
+  "gemini-4-hydrogen-high": "gemini-4-hydrogen-high",
+  "gemini-4-hydrogen-medium": "gemini-4-hydrogen-medium",
+  "gemini-4-hydrogen-low": "gemini-4-hydrogen-low",
+  "gemini-4-hydrogen-disabled": "gemini-4-hydrogen",
   "gemini-4-argon": "gemini-4-argon",
   "gemini-4-argon-high": "gemini-4-argon-high",
   "gemini-4-argon-medium": "gemini-4-argon-medium",
@@ -290,6 +308,13 @@ const MODEL_ALIASES = {
 };
 
 const PROXY_MODELS_LIST = [
+  // Flagship Gemini 4 Hydrogen
+  { id: "gemini-4-hydrogen", object: "model", owned_by: "google", description: "Google Gemini 4 Hydrogen (Everyday Coding & Agent Workflows)" },
+  { id: "gemini-4-hydrogen-extra", object: "model", owned_by: "google", description: "Gemini 4 Hydrogen Extra Reasoning (xhigh)" },
+  { id: "gemini-4-hydrogen-high", object: "model", owned_by: "google", description: "Gemini 4 Hydrogen High Reasoning (Default)" },
+  { id: "gemini-4-hydrogen-medium", object: "model", owned_by: "google", description: "Gemini 4 Hydrogen Medium Reasoning" },
+  { id: "gemini-4-hydrogen-low", object: "model", owned_by: "google", description: "Gemini 4 Hydrogen Low Reasoning" },
+
   // Flagship Gemini 4 Argon
   { id: "gemini-4-argon", object: "model", owned_by: "google", description: "Google Gemini 4 Argon (Web Flagship)" },
   { id: "gemini-4-argon-high", object: "model", owned_by: "google", description: "Gemini 4 Argon High (Web Thinking)" },
@@ -382,6 +407,13 @@ function normalizeModelName(rawModel) {
     return "gemini-4-argon-web-spark";
   }
 
+  if (cleaned.includes("hydrogen")) {
+    if (cleaned.includes("extra") || cleaned.includes("xhigh")) return "gemini-4-hydrogen-extra";
+    if (cleaned.includes("low")) return "gemini-4-hydrogen-low";
+    if (cleaned.includes("med")) return "gemini-4-hydrogen-medium";
+    if (cleaned.includes("high")) return "gemini-4-hydrogen-high";
+    return "gemini-4-hydrogen";
+  }
   if (cleaned.includes("argon")) {
     if (cleaned.includes("low")) return "gemini-4-argon-low";
     if (cleaned.includes("med")) return "gemini-4-argon-medium";
@@ -447,9 +479,10 @@ const tokenCache = new Map();
 const rateLimitMap = new Map();
 
 function isAccountRateLimited(acc, model) {
-  const isArgon = model.includes("argon");
-  const is3p = !isArgon && (model.includes("claude") || model.includes("gpt-oss"));
-  const group = isArgon ? "argon" : (is3p ? "3p" : "gemini");
+  const isHydrogen = model.includes("hydrogen");
+  const isArgon = !isHydrogen && model.includes("argon");
+  const is3p = !isHydrogen && !isArgon && (model.includes("claude") || model.includes("gpt-oss"));
+  const group = isHydrogen ? "hydrogen" : (isArgon ? "argon" : (is3p ? "3p" : "gemini"));
   const key = `${acc.account_id || acc.email || "acc"}:${group}`;
   const expiry = rateLimitMap.get(key);
   if (!expiry) return false;
@@ -480,6 +513,23 @@ function isModelSupported(acc, model) {
     if (has55) return false;
     if (availList.length > 0) {
       return availList.includes(norm) || availList.some(m => m.includes("claude") && !m.includes("5-5") && !m.includes("5.5"));
+    }
+    return true;
+  }
+  const isHydrogen = norm.includes("hydrogen");
+  if (isHydrogen) {
+    if (acc.auth_method === "gemini_web") return true;
+    if (availList.length > 0) {
+      const hydrogenKeys = [norm, "gemini-4-hydrogen-high", "gemini-4-hydrogen-extra", "gemini-4-hydrogen-medium", "gemini-4-hydrogen-low", "gemini-4-hydrogen"];
+      for (const k of hydrogenKeys) {
+        if (availList.includes(k)) {
+          if (!Array.isArray(avail) && typeof avail === "object" && avail[k] && avail[k].disabled) {
+            continue;
+          }
+          return true;
+        }
+      }
+      return true;
     }
     return true;
   }
@@ -528,9 +578,10 @@ function parseResetDuration(text) {
 }
 
 function markAccountRateLimited(acc, model, durationMs = 15000) {
-  const isArgon = model.includes("argon");
-  const is3p = !isArgon && (model.includes("claude") || model.includes("gpt-oss"));
-  const group = isArgon ? "argon" : (is3p ? "3p" : "gemini");
+  const isHydrogen = model.includes("hydrogen");
+  const isArgon = !isHydrogen && model.includes("argon");
+  const is3p = !isHydrogen && !isArgon && (model.includes("claude") || model.includes("gpt-oss"));
+  const group = isHydrogen ? "hydrogen" : (isArgon ? "argon" : (is3p ? "3p" : "gemini"));
   const key = `${acc.account_id || acc.email || "acc"}:${group}`;
   rateLimitMap.set(key, Date.now() + durationMs);
 }
@@ -944,7 +995,9 @@ function buildCloudCodePayload(reqJson, backendModel, auth) {
   }
 
   let targetBackendModel = backendModel;
-  if (backendModel === "gemini-4-argon" || backendModel === "gemini-4-argon-disabled") {
+  if (backendModel === "gemini-4-hydrogen" || backendModel === "gemini-4-hydrogen-disabled") {
+    targetBackendModel = "gemini-4-hydrogen-high";
+  } else if (backendModel === "gemini-4-argon" || backendModel === "gemini-4-argon-disabled") {
     targetBackendModel = "gemini-4-argon-high";
   } else if (backendModel === "gemini-3.8-flash-deepagent" || backendModel === "gemini-deepagent") {
     targetBackendModel = "gemini-3.8-flash-high";
@@ -987,7 +1040,25 @@ function buildCloudCodePayload(reqJson, backendModel, auth) {
     }
   }
 
-  if (targetBackendModel.includes("argon")) {
+  if (targetBackendModel.includes("hydrogen")) {
+    if (thinkingConfig.includeThoughts !== false && thinkingConfig.thinkingBudget !== 0) {
+      delete thinkingConfig.thinkingBudget;
+      if (!thinkingConfig.thinkingLevel) {
+        if (targetBackendModel.includes("extra") || targetBackendModel.includes("xhigh")) {
+          thinkingConfig.thinkingLevel = "XHIGH";
+        } else if (targetBackendModel.includes("low")) {
+          thinkingConfig.thinkingLevel = "LOW";
+        } else if (targetBackendModel.includes("medium") || targetBackendModel.includes("med")) {
+          thinkingConfig.thinkingLevel = "MEDIUM";
+        } else {
+          thinkingConfig.thinkingLevel = "HIGH";
+        }
+      }
+    } else {
+      delete thinkingConfig.thinkingLevel;
+      delete thinkingConfig.thinkingBudget;
+    }
+  } else if (targetBackendModel.includes("argon")) {
     if (thinkingConfig.includeThoughts !== false && thinkingConfig.thinkingBudget !== 0) {
       if (thinkingConfig.thinkingBudget === -1) {
         delete thinkingConfig.thinkingBudget;

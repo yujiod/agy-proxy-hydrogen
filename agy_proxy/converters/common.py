@@ -16,6 +16,7 @@ import httpx
 from agy_proxy.models import (
     DEFAULT_MODEL,
     is_argon_model,
+    is_hydrogen_model,
     is_claude_5_5_model,
     is_deepagent_model,
     normalize_model_name,
@@ -680,6 +681,21 @@ def _apply_thinking_config(
                     thinking_config["thinkingLevel"] = "HIGH"
         else:
             thinking_config.pop("thinkingLevel", None)
+    elif is_hydrogen_model(backend_model):
+        if thinking_config.get("includeThoughts") is not False and thinking_config.get("thinkingBudget") != 0:
+            thinking_config.pop("thinkingBudget", None)
+            if "thinkingLevel" not in thinking_config:
+                if "extra" in backend_model or "xhigh" in backend_model:
+                    thinking_config["thinkingLevel"] = "XHIGH"
+                elif backend_model.endswith("-low") or "-low" in backend_model:
+                    thinking_config["thinkingLevel"] = "LOW"
+                elif backend_model.endswith("-medium") or "-medium" in backend_model or "-med" in backend_model:
+                    thinking_config["thinkingLevel"] = "MEDIUM"
+                else:
+                    thinking_config["thinkingLevel"] = "HIGH"
+        else:
+            thinking_config.pop("thinkingLevel", None)
+            thinking_config.pop("thinkingBudget", None)
     elif is_argon_model(backend_model):
         if thinking_config.get("includeThoughts") is not False and thinking_config.get("thinkingBudget") != 0:
             if thinking_config.get("thinkingBudget") == -1:

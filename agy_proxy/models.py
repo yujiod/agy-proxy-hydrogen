@@ -52,7 +52,18 @@ DEFAULT_MODEL = "gemini-3.8-flash-high"
 
 MODEL_ALIASES: dict[str, str] = {
     # --------------------------------------------------------------------------
-    # 1. Gemini 4 Argon (API models - requires Argon-supported subscription tier)
+    # 1. Gemini 4 Hydrogen (API models - Everyday Coding & Agentic Workflows)
+    # --------------------------------------------------------------------------
+    "gemini-4-hydrogen": "gemini-4-hydrogen",
+    "gemini-4-hydrogen-extra": "gemini-4-hydrogen-extra",
+    "gemini-4-hydrogen-xhigh": "gemini-4-hydrogen-extra",
+    "gemini-4-hydrogen-high": "gemini-4-hydrogen-high",
+    "gemini-4-hydrogen-medium": "gemini-4-hydrogen-medium",
+    "gemini-4-hydrogen-low": "gemini-4-hydrogen-low",
+    "gemini-4-hydrogen-disabled": "gemini-4-hydrogen",
+
+    # --------------------------------------------------------------------------
+    # 1b. Gemini 4 Argon (API models - requires Argon-supported subscription tier)
     # --------------------------------------------------------------------------
     "gemini-4-argon": "gemini-4-argon",
     "gemini-4-argon-high": "gemini-4-argon-high",
@@ -269,6 +280,12 @@ MODEL_ALIASES: dict[str, str] = {
 
 
 VALID_CLOUDCODE_MODELS = {
+    # Gemini 4 Hydrogen (CloudCode API / Google API)
+    "gemini-4-hydrogen",
+    "gemini-4-hydrogen-extra",
+    "gemini-4-hydrogen-high",
+    "gemini-4-hydrogen-medium",
+    "gemini-4-hydrogen-low",
     # Gemini 4 Argon (CloudCode API - requires Argon-supported subscription tier)
     "gemini-4-argon",
     "gemini-4-argon-high",
@@ -314,6 +331,12 @@ VALID_CLOUDCODE_MODELS = {
 }
 
 VALID_WEB_MODELS = {
+    # Gemini 4 Hydrogen Web models
+    "gemini-4-hydrogen-web",
+    "gemini-4-hydrogen-web-extra",
+    "gemini-4-hydrogen-web-high",
+    "gemini-4-hydrogen-web-medium",
+    "gemini-4-hydrogen-web-low",
     # Gemini 4 Argon Web models
     "gemini-4-argon-web-high",
     "gemini-4-argon-web-medium",
@@ -335,6 +358,15 @@ VALID_WEB_MODELS = {
 }
 
 CLOUDCODE_PLACEHOLDER_MAP: dict[str, str] = {
+    # Gemini 4 Hydrogen
+    "gemini-4-hydrogen": "MODEL_PLACEHOLDER_M425",
+    "gemini-4-hydrogen-high": "MODEL_PLACEHOLDER_M425",
+    "gemini-4-hydrogen-extra": "MODEL_PLACEHOLDER_M424",
+    "gemini-4-hydrogen-xhigh": "MODEL_PLACEHOLDER_M424",
+    "gemini-4-hydrogen-medium": "MODEL_PLACEHOLDER_M426",
+    "gemini-4-hydrogen-low": "MODEL_PLACEHOLDER_M427",
+    "gemini-4-hydrogen-disabled": "MODEL_PLACEHOLDER_M425",
+    # Gemini 4 Argon
     "claude-opus-4-6-thinking": "MODEL_PLACEHOLDER_M26",
     "claude-sonnet-4-6": "MODEL_PLACEHOLDER_M35",
     "gemini-3.7-flash-high": "MODEL_PLACEHOLDER_M315",
@@ -375,6 +407,10 @@ CLOUDCODE_PLACEHOLDER_MAP: dict[str, str] = {
     "gemini-2.5-flash-thinking": "MODEL_GOOGLE_GEMINI_2_5_FLASH_THINKING",
     "models/proactive-observer-v10": "models/proactive-observer-v10",
     # Injected web & cloud models
+    "gemini-4-hydrogen-web-extra": "MODEL_PLACEHOLDER_M537",
+    "gemini-4-hydrogen-web-high": "MODEL_PLACEHOLDER_M538",
+    "gemini-4-hydrogen-web-medium": "MODEL_PLACEHOLDER_M539",
+    "gemini-4-hydrogen-web-low": "MODEL_PLACEHOLDER_M540",
     "gemini-4-argon-web-high": "MODEL_PLACEHOLDER_M501",
     "gemini-4-argon-web-medium": "MODEL_PLACEHOLDER_M502",
     "gemini-4-argon-web-low": "MODEL_PLACEHOLDER_M503",
@@ -461,12 +497,20 @@ REVERSE_PLACEHOLDER_MAP.update({
     "1421": "gemini-4-argon",
     "1422": "gemini-4-argon-medium",
     "1423": "gemini-4-argon-low",
+    "1424": "gemini-4-hydrogen-extra",
+    "1425": "gemini-4-hydrogen-high",
+    "1426": "gemini-4-hydrogen-medium",
+    "1427": "gemini-4-hydrogen-low",
     "model_placeholder_m417": "gemini-4-argon-high",
     "model_placeholder_m418": "gemini-4-argon-medium",
     "model_placeholder_m419": "gemini-4-argon-low",
     "model_placeholder_m421": "gemini-4-argon",
     "model_placeholder_m422": "gemini-4-argon-medium",
     "model_placeholder_m423": "gemini-4-argon-low",
+    "model_placeholder_m424": "gemini-4-hydrogen-extra",
+    "model_placeholder_m425": "gemini-4-hydrogen-high",
+    "model_placeholder_m426": "gemini-4-hydrogen-medium",
+    "model_placeholder_m427": "gemini-4-hydrogen-low",
     # Legacy synthetic mappings for backward compatibility
     "model_placeholder_m515": "claude-sonnet-5-5-high",
     "model_placeholder_m516": "claude-sonnet-5-5-medium",
@@ -527,6 +571,13 @@ REVERSE_PLACEHOLDER_MAP.update({
 })
 
 EXACT_MODEL_METADATA: dict[str, dict[str, Any]] = {
+    # Gemini 4 Hydrogen (CloudCode API / Google API - Everyday Coding & Agentic Workflows)
+    "gemini-4-hydrogen": {"displayName": "Gemini 4 Hydrogen", "maxTokens": 1048576, "maxOutputTokens": 65536, "supportsImages": True, "supportsVideo": True, "supportsThinking": True, "thinkingBudget": -1, "thinkingLevel": 3},
+    "gemini-4-hydrogen-extra": {"displayName": "Gemini 4 Hydrogen (Extra Thinking)", "maxTokens": 1048576, "maxOutputTokens": 65536, "supportsImages": True, "supportsVideo": True, "supportsThinking": True, "thinkingBudget": -1, "thinkingLevel": 4},
+    "gemini-4-hydrogen-xhigh": {"displayName": "Gemini 4 Hydrogen (Extra Thinking)", "maxTokens": 1048576, "maxOutputTokens": 65536, "supportsImages": True, "supportsVideo": True, "supportsThinking": True, "thinkingBudget": -1, "thinkingLevel": 4},
+    "gemini-4-hydrogen-high": {"displayName": "Gemini 4 Hydrogen (High)", "maxTokens": 1048576, "maxOutputTokens": 65536, "supportsImages": True, "supportsVideo": True, "supportsThinking": True, "thinkingBudget": -1, "thinkingLevel": 3},
+    "gemini-4-hydrogen-medium": {"displayName": "Gemini 4 Hydrogen (Medium)", "maxTokens": 1048576, "maxOutputTokens": 65536, "supportsImages": True, "supportsVideo": True, "supportsThinking": True, "thinkingBudget": -1, "thinkingLevel": 2},
+    "gemini-4-hydrogen-low": {"displayName": "Gemini 4 Hydrogen (Low)", "maxTokens": 1048576, "maxOutputTokens": 65536, "supportsImages": True, "supportsVideo": True, "supportsThinking": True, "thinkingBudget": -1, "thinkingLevel": 1},
     # Gemini 4 Argon (CloudCode API - requires Argon-supported subscription tier)
     "gemini-4-argon": {"displayName": "Gemini 4 Argon", "maxTokens": 1048576, "maxOutputTokens": 65536, "supportsImages": True, "supportsVideo": True, "supportsThinking": True, "thinkingBudget": -1, "thinkingLevel": 3},
     "gemini-4-argon-high": {"displayName": "Gemini 4 Argon (High)", "maxTokens": 1048576, "maxOutputTokens": 65536, "supportsImages": True, "supportsVideo": True, "supportsThinking": True, "thinkingBudget": -1, "thinkingLevel": 3},
@@ -737,6 +788,19 @@ PROXY_CATALOG_MODELS: dict[str, dict[str, Any]] = {
     "gpt-oss-120b-medium": {"displayName": "GPT-OSS 120B (Medium)", "maxTokens": 131072, "description": "Google CloudCode authentic open-source GPT model", "category": "Open Source"},
     "gpt-oss-120b": {"displayName": "GPT-OSS 120B", "maxTokens": 131072, "description": "Standard alias for GPT-OSS 120B", "category": "Open Source"},
 
+    # Gemini 4 Hydrogen Models
+    "gemini-4-hydrogen": {"displayName": "Gemini 4 Hydrogen", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen for everyday coding and agentic workflows", "category": "Google Gemini"},
+    "gemini-4-hydrogen-extra": {"displayName": "Gemini 4 Hydrogen (Extra Reasoning)", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen with extra deep reasoning (xhigh)", "category": "Google Gemini"},
+    "gemini-4-hydrogen-high": {"displayName": "Gemini 4 Hydrogen (High Reasoning)", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen default high reasoning", "category": "Google Gemini"},
+    "gemini-4-hydrogen-medium": {"displayName": "Gemini 4 Hydrogen (Medium Reasoning)", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen with balanced reasoning", "category": "Google Gemini"},
+    "gemini-4-hydrogen-low": {"displayName": "Gemini 4 Hydrogen (Low Reasoning)", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen fast low reasoning", "category": "Google Gemini"},
+    # Gemini 4 Hydrogen Web Models
+    "gemini-4-hydrogen-web": {"displayName": "Gemini 4 Hydrogen (Web Flagship)", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen Web flagship model", "category": "Gemini Web"},
+    "gemini-4-hydrogen-web-extra": {"displayName": "Gemini 4 Hydrogen (Web) (Extra Reasoning)", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen Web model with extra deep reasoning", "category": "Gemini Web"},
+    "gemini-4-hydrogen-web-high": {"displayName": "Gemini 4 Hydrogen (Web) (High Reasoning)", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen Web model with high reasoning", "category": "Gemini Web"},
+    "gemini-4-hydrogen-web-medium": {"displayName": "Gemini 4 Hydrogen (Web) (Medium Reasoning)", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen Web model with balanced reasoning", "category": "Gemini Web"},
+    "gemini-4-hydrogen-web-low": {"displayName": "Gemini 4 Hydrogen (Web) (Low / Fast)", "maxTokens": 1048576, "description": "Gemini 4 Hydrogen Web fast low-latency model", "category": "Gemini Web"},
+
     # Gemini Web Browser Models (Clean canonical suffix *-web)
     "gemini-4-argon-web-high": {"displayName": "Gemini 4 Argon (Web) (High Reasoning)", "maxTokens": 1048576, "description": "Gemini 4 Argon Web flagship model with deep reasoning", "category": "Gemini Web"},
     "gemini-4-argon-web-medium": {"displayName": "Gemini 4 Argon (Web) (Medium Reasoning)", "maxTokens": 1048576, "description": "Gemini 4 Argon Web model with balanced reasoning", "category": "Gemini Web"},
@@ -802,6 +866,14 @@ def normalize_model_name(model_name: Any) -> str:
     )
 
     if is_web_query:
+        if "hydrogen" in cleaned:
+            if "extra" in cleaned or "xhigh" in cleaned:
+                return "gemini-4-hydrogen-web-extra"
+            if "low" in cleaned:
+                return "gemini-4-hydrogen-web-low"
+            if "med" in cleaned:
+                return "gemini-4-hydrogen-web-medium"
+            return "gemini-4-hydrogen-web-high"
         if "spark" in cleaned:
             if "3.8" in cleaned or ("flash" in cleaned and "lite" not in cleaned):
                 return "gemini-3.8-flash-web-spark"
@@ -842,6 +914,16 @@ def normalize_model_name(model_name: Any) -> str:
 
     # Version specific checks (Gemini CloudCode API only)
     if not is_claude_query:
+        if "hydrogen" in cleaned:
+            if "extra" in cleaned or "xhigh" in cleaned:
+                return "gemini-4-hydrogen-extra"
+            if "low" in cleaned:
+                return "gemini-4-hydrogen-low"
+            if "med" in cleaned:
+                return "gemini-4-hydrogen-medium"
+            if "high" in cleaned:
+                return "gemini-4-hydrogen-high"
+            return "gemini-4-hydrogen"
         if "spark" in cleaned or "task" in cleaned or "agent" in cleaned:
             if "flash-agent" in cleaned or "3-flash-agent" in cleaned:
                 return "gemini-3-flash-agent"
@@ -1020,6 +1102,51 @@ def get_claude_5_5_upgrade_model(model_name: str | None) -> str:
     if "opus" in norm:
         return "claude-opus-5-5-high"
     return "claude-sonnet-5-5-high"
+
+
+HYDROGEN_MODELS: set[str] = {
+    "gemini-4-hydrogen",
+    "gemini-4-hydrogen-extra",
+    "gemini-4-hydrogen-xhigh",
+    "gemini-4-hydrogen-high",
+    "gemini-4-hydrogen-medium",
+    "gemini-4-hydrogen-low",
+    "gemini-4-hydrogen-web",
+    "gemini-4-hydrogen-web-extra",
+    "gemini-4-hydrogen-web-high",
+    "gemini-4-hydrogen-web-medium",
+    "gemini-4-hydrogen-web-low",
+}
+
+
+def is_hydrogen_model(model_name: str | None) -> bool:
+    """Checks whether the requested model is a Gemini 4 Hydrogen variant."""
+    if not model_name:
+        return False
+    norm = normalize_model_name(model_name)
+    return "hydrogen" in norm
+
+
+def resolve_cloudcode_hydrogen_model(model_name: str) -> str:
+    """Maps bare 'gemini-4-hydrogen' (or '-disabled') to 'gemini-4-hydrogen-high' for upstream CloudCode requests."""
+    if model_name in ("gemini-4-hydrogen", "gemini-4-hydrogen-disabled"):
+        return "gemini-4-hydrogen-high"
+    return model_name
+
+
+def get_hydrogen_fallback_model(model_name: str | None) -> str:
+    """
+    Returns the corresponding Google Flagship Gemini 3.8 fallback model for a Hydrogen variant.
+    Preserves reasoning level (Extra/High -> Flash High, Medium -> Flash Medium, Low -> Flash Low).
+    """
+    if not model_name:
+        return "gemini-3.8-flash-high"
+    norm = normalize_model_name(model_name)
+    if "low" in norm:
+        return "gemini-3.8-flash-low"
+    if "med" in norm:
+        return "gemini-3.8-flash-medium"
+    return "gemini-3.8-flash-high"
 
 
 ARGON_MODELS: set[str] = {

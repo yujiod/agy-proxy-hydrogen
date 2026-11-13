@@ -350,8 +350,13 @@ async def handle_auth_list():
             c_wk = int(q_details.get("3p", {}).get("weekly", {}).get("percent", q_details.get("3p", {}).get("percent", 100)))
             c_5h = int(q_details.get("3p", {}).get("5h", {}).get("percent", q_details.get("3p", {}).get("percent", 100)))
             argon_q = q_details.get("argon", {})
+            hydrogen_q = q_details.get("hydrogen", {})
 
             gemini_q = f"5h: [bold red]{g_5h}%[/bold red] | Wk: {g_wk}%" if g_5h <= 0 else f"5h: {g_5h}% | Wk: {g_wk}%"
+            if hydrogen_q.get("has_dedicated_bucket"):
+                h_wk = int(hydrogen_q.get("weekly", {}).get("percent", hydrogen_q.get("percent", 0)))
+                h_str = f"[bold red]{h_wk}%[/bold red]" if h_wk <= 0 else f"[bold green]{h_wk}%[/bold green]"
+                gemini_q += f" | Hydrogen: {h_str}"
             if argon_q.get("has_dedicated_bucket"):
                 a_wk = int(argon_q.get("weekly", {}).get("percent", argon_q.get("percent", 0)))
                 a_str = f"[bold red]{a_wk}%[/bold red]" if a_wk <= 0 else f"[bold green]{a_wk}%[/bold green]"

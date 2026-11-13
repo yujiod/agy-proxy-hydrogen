@@ -149,6 +149,8 @@ Configure your clients using any of these supported model identifiers:
 
 | Model ID | Provider Family | Context Window | Best For |
 | :--- | :--- | :--- | :--- |
+| `gemini-4-hydrogen` / `gemini-4-hydrogen-high` | Gemini 4 Hydrogen | 1,048,576 tokens | Everyday high-speed intelligence, agentic workflows (Default). |
+| `gemini-4-hydrogen-extra` | Gemini 4 Hydrogen | 1,048,576 tokens | Maximum reasoning capacity (`xhigh`) for hardest problems. |
 | `gemini-3.8-flash-high` | Gemini 3.8 | 1,048,576 tokens | Ultra-fast coding, agentic workflows, low latency. |
 | `gemini-3.8-flash-deepagent` | Gemini 3.8 | 1,048,576 tokens | Autonomous multi-agent coding preset with high reasoning effort. |
 | `gemini-4-argon` / `gemini-4-argon-high` | Gemini 4 Argon | 1,048,576 tokens | Next-gen flagship reasoning model (auto-unlocked). |

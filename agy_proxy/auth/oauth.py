@@ -328,6 +328,21 @@ class AntigravityOAuthSession(AccountSession):
             logger.debug("[%s] fetchAvailableModels error: %s", self.email, e)
         return self.available_models
 
+    def _has_hydrogen_quota_group(self) -> bool:
+        """Checks whether quota_summary contains an active dedicated Gemini 4 Hydrogen bucket."""
+        qs = getattr(self, "quota_summary", None)
+        if not qs or not isinstance(qs, dict):
+            return False
+        for group in qs.get("groups", []):
+            g_name = str(group.get("displayName") or "").lower()
+            buckets = group.get("buckets", []) or []
+            has_hydro = "hydrogen" in g_name or any("hydrogen" in str(b.get("bucketId", "")).lower() for b in buckets)
+            if has_hydro:
+                if buckets and all(bool(b.get("disabled", False)) for b in buckets):
+                    continue
+                return True
+        return False
+
     def _has_argon_quota_group(self) -> bool:
         """Checks whether quota_summary contains an active dedicated Gemini 4 Argon bucket."""
         qs = getattr(self, "quota_summary", None)
@@ -356,6 +371,7 @@ class AntigravityOAuthSession(AccountSession):
             is_claude_5_5_model,
             is_claude_4_6_model,
             is_argon_model,
+            is_hydrogen_model,
             is_deepagent_model,
             is_gemini_web_model,
         )
@@ -397,7 +413,20 @@ class AntigravityOAuthSession(AccountSession):
                 return False
             return True
 
-        # 5. Gemini 4 Argon models: supported if explicitly available & enabled in CloudCode, or has dedicated Argon quota bucket
+        # 5. Gemini 4 Hydrogen models: supported if explicitly available & enabled in CloudCode, or has dedicated Hydrogen quota bucket
+        if is_hydrogen_model(norm):
+            if str(model_name).strip().lower() == "gemini-4-hydrogen-disabled":
+                return False
+            if avail:
+                if norm in avail:
+                    return not bool(avail[norm].get("disabled", False))
+                return any(
+                    m in avail and not bool(avail[m].get("disabled", False))
+                    for m in ("gemini-4-hydrogen-high", "gemini-4-hydrogen-extra", "gemini-4-hydrogen-medium", "gemini-4-hydrogen-low", "gemini-4-hydrogen")
+                )
+            return self._has_hydrogen_quota_group() or True
+
+        # 5b. Gemini 4 Argon models: supported if explicitly available & enabled in CloudCode, or has dedicated Argon quota bucket
         if is_argon_model(norm):
             if str(model_name).strip().lower() == "gemini-4-argon-disabled":
                 return False
@@ -421,6 +450,7 @@ class AntigravityOAuthSession(AccountSession):
         is_gemini_limited = self.is_rate_limited("gemini")
         is_claude_limited = self.is_rate_limited("claude")
         is_argon_limited = self.is_rate_limited("argon")
+        is_hydrogen_limited = self.is_rate_limited("hydrogen")
 
         if not self.enabled or getattr(self, "disabled_reason", None) or (isinstance(getattr(self, "quota_summary", None), dict) and self.quota_summary.get("error") == "TOS_VIOLATION"):
             reason = getattr(self, "disabled_reason", "Account disabled / suspended")
@@ -433,12 +463,13 @@ class AntigravityOAuthSession(AccountSession):
                 "is_rate_limited": True,
                 "5h": {"fraction": 0.0, "percent": 0.0, "reset_time": None, "description": reason},
                 "weekly": {"fraction": 0.0, "percent": 0.0, "reset_time": None, "description": reason},
-                "cooldown_seconds": 0,
             }
             return {
-                "gemini": dict(disabled_entry),
-                "3p": dict(disabled_entry),
+                "gemini": disabled_entry,
+                "3p": disabled_entry,
+                "claude": disabled_entry,
                 "argon": {**disabled_entry, "has_dedicated_bucket": False},
+                "hydrogen": {**disabled_entry, "has_dedicated_bucket": False},
             }
 
         res = {
@@ -456,7 +487,7 @@ class AntigravityOAuthSession(AccountSession):
                 "fraction": 1.0,
                 "percent": 100.0,
                 "reset_time": None,
-                "window": "weekly",
+                "window": "5h",
                 "description": "",
                 "is_rate_limited": is_claude_limited,
                 "5h": {"fraction": 1.0, "percent": 100.0, "reset_time": None, "description": ""},
@@ -473,6 +504,17 @@ class AntigravityOAuthSession(AccountSession):
                 "5h": {"fraction": 1.0, "percent": 100.0, "reset_time": None, "description": ""},
                 "weekly": {"fraction": 1.0, "percent": 100.0, "reset_time": None, "description": ""},
             },
+            "hydrogen": {
+                "fraction": 1.0,
+                "percent": 100.0,
+                "reset_time": None,
+                "window": "weekly",
+                "description": "",
+                "is_rate_limited": is_hydrogen_limited,
+                "has_dedicated_bucket": False,
+                "5h": {"fraction": 1.0, "percent": 100.0, "reset_time": None, "description": ""},
+                "weekly": {"fraction": 1.0, "percent": 100.0, "reset_time": None, "description": ""},
+            },
         }
 
         qs = getattr(self, "quota_summary", None)
@@ -480,8 +522,12 @@ class AntigravityOAuthSession(AccountSession):
             for group in qs.get("groups", []):
                 g_name = (group.get("displayName") or "").lower()
                 buckets = group.get("buckets", [])
+                is_hydrogen_grp = "hydrogen" in g_name or any("hydrogen" in str(b.get("bucketId", "")).lower() for b in buckets)
                 is_argon_grp = "argon" in g_name or any("argon" in str(b.get("bucketId", "")).lower() for b in buckets)
-                if is_argon_grp:
+                if is_hydrogen_grp:
+                    key = "hydrogen"
+                    res["hydrogen"]["has_dedicated_bucket"] = True
+                elif is_argon_grp:
                     key = "argon"
                     res["argon"]["has_dedicated_bucket"] = True
                 elif any(sub in g_name for sub in ("claude", "gpt", "3p", "anthropic", "sonnet", "opus")):
@@ -577,17 +623,19 @@ class AntigravityOAuthSession(AccountSession):
                     res[key]["5h"] = dict(win_payload)
                     res[key]["weekly"] = dict(win_payload)
 
-        from agy_proxy.models import is_argon_model, normalize_model_name, resolve_cloudcode_argon_model
+        from agy_proxy.models import is_argon_model, is_hydrogen_model, normalize_model_name, resolve_cloudcode_argon_model, resolve_cloudcode_hydrogen_model
         now = time.time()
-        for k in ("gemini", "3p", "argon"):
+        for k in ("gemini", "3p", "argon", "hydrogen"):
             max_limit = 0.0
             for rk, rv in self.rate_limited_models.items():
+                rk_is_hydro = (rk == "hydrogen") or is_hydrogen_model(rk)
                 rk_is_argon = (rk == "argon") or is_argon_model(rk)
-                rk_is_3p = False if rk_is_argon else is_3p_model(rk)
+                rk_is_3p = False if (rk_is_argon or rk_is_hydro) else is_3p_model(rk)
                 matches = (
-                    (k == "argon" and rk_is_argon)
+                    (k == "hydrogen" and rk_is_hydro)
+                    or (k == "argon" and rk_is_argon)
                     or (k == "3p" and rk_is_3p)
-                    or (k == "gemini" and not rk_is_3p and not rk_is_argon)
+                    or (k == "gemini" and not rk_is_3p and not rk_is_argon and not rk_is_hydro)
                 )
                 if matches and rv > max_limit:
                     max_limit = rv
@@ -600,12 +648,15 @@ class AntigravityOAuthSession(AccountSession):
 
     def get_model_quota(self, model: str) -> dict[str, Any]:
         """Returns the effective quota fraction and reset time for a specific model."""
-        from agy_proxy.models import is_argon_model, normalize_model_name, resolve_cloudcode_argon_model
+        from agy_proxy.models import is_argon_model, is_hydrogen_model, normalize_model_name, resolve_cloudcode_argon_model, resolve_cloudcode_hydrogen_model
         norm = normalize_model_name(model)
+        is_hydrogen = (model == "hydrogen") or is_hydrogen_model(norm)
         is_argon = (model == "argon") or is_argon_model(norm)
-        is_3p = False if is_argon else is_3p_model(model)
+        is_3p = False if (is_argon or is_hydrogen) else is_3p_model(model)
         quotas = self.get_quota_details()
-        if is_argon and quotas.get("argon", {}).get("has_dedicated_bucket"):
+        if is_hydrogen and quotas.get("hydrogen", {}).get("has_dedicated_bucket"):
+            group_quota = quotas["hydrogen"]
+        elif is_argon and quotas.get("argon", {}).get("has_dedicated_bucket"):
             group_quota = quotas["argon"]
         else:
             group_quota = quotas["3p"] if is_3p else quotas["gemini"]
@@ -613,7 +664,7 @@ class AntigravityOAuthSession(AccountSession):
         rem = group_quota["fraction"]
         reset_time = group_quota["reset_time"]
 
-        lookup_key = model if model in self.available_models else resolve_cloudcode_argon_model(norm)
+        lookup_key = model if model in self.available_models else resolve_cloudcode_hydrogen_model(resolve_cloudcode_argon_model(norm))
         model_q = self.available_models.get(lookup_key, {}).get("quotaInfo", {})
         if "remainingFraction" in model_q:
             rem = min(rem, float(model_q["remainingFraction"]))

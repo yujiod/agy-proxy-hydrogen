@@ -239,9 +239,10 @@ class TestServerRoutes(unittest.IsolatedAsyncioTestCase):
         resp_quota = await self.client.post("/v1internal:retrieveUserQuotaSummary")
         self.assertEqual(resp_quota.status_code, 200)
         self.assertIn("groups", resp_quota.json())
-        self.assertEqual(len(resp_quota.json()["groups"]), 3)
+        self.assertEqual(len(resp_quota.json()["groups"]), 4)
         group_names = [g.get("displayName") for g in resp_quota.json()["groups"]]
         self.assertIn("Gemini 4 Argon", group_names)
+        self.assertIn("Gemini 4 Hydrogen", group_names)
 
         # 6. POST action fetchAvailableModels schema fidelity
         resp_m = await self.client.post("/v1internal:fetchAvailableModels")

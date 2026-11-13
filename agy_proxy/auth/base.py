@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 
 from agy_proxy.auth.constants import logger
-from agy_proxy.models import is_3p_model, is_argon_model, is_claude_5_5_model
+from agy_proxy.models import is_3p_model, is_argon_model, is_hydrogen_model, is_claude_5_5_model
 
 
 class BaseAccountSession:
@@ -145,10 +145,16 @@ class BaseAccountSession:
                 else:
                     del self.rate_limited_models["claude-5-5"]
 
-        # 3. Group-level keys and aliases (Argon has its own dedicated quota/rate-limit pool)
+        # 3. Group-level keys and aliases (Argon and Hydrogen have their own dedicated quota/rate-limit pools)
+        is_hydrogen = (model == "hydrogen") or is_hydrogen_model(model)
         is_argon = (model == "argon") or is_argon_model(model)
-        is_3p = False if is_argon else is_3p_model(model)
-        aliases = ["argon"] if is_argon else (["3p", "claude"] if is_3p else ["gemini"])
+        is_3p = False if (is_argon or is_hydrogen) else is_3p_model(model)
+        if is_hydrogen:
+            aliases = ["hydrogen"]
+        elif is_argon:
+            aliases = ["argon"]
+        else:
+            aliases = ["3p", "claude"] if is_3p else ["gemini"]
         for alias in aliases:
             if alias in self.rate_limited_models:
                 if now < self.rate_limited_models[alias]:
@@ -162,6 +168,16 @@ class BaseAccountSession:
             if k == "claude-5-5" or is_claude_5_5_model(k):
                 if is_c55 and now < v:
                     return True
+                continue
+            k_is_hydrogen = (k == "hydrogen") or is_hydrogen_model(k)
+            if k_is_hydrogen:
+                if is_hydrogen:
+                    if now < v:
+                        return True
+                    else:
+                        del self.rate_limited_models[k]
+                continue
+            if is_hydrogen:
                 continue
             k_is_argon = (k == "argon") or is_argon_model(k)
             if k_is_argon:
@@ -185,6 +201,8 @@ class BaseAccountSession:
         """Marks account rate-limited for a duration."""
         if is_claude_5_5_model(model):
             key = "claude-5-5"
+        elif model == "hydrogen" or is_hydrogen_model(model):
+            key = "hydrogen"
         elif model == "argon" or is_argon_model(model):
             key = "argon"
         else:
@@ -263,12 +281,18 @@ class BaseAccountSession:
 
             gemini_ex = _is_group_exhausted(gemini_q)
             claude_ex = _is_group_exhausted(claude_q)
+            exhausted_all = gemini_ex and claude_ex
             if argon_q.get("has_dedicated_bucket"):
-                argon_ex = _is_group_exhausted(argon_q)
-                return gemini_ex and claude_ex and argon_ex
-            return gemini_ex and claude_ex
+                exhausted_all = exhausted_all and _is_group_exhausted(argon_q)
+            hydrogen_q = qd.get("hydrogen", {})
+            if hydrogen_q.get("has_dedicated_bucket"):
+                exhausted_all = exhausted_all and _is_group_exhausted(hydrogen_q)
+            return exhausted_all
 
-        if model == "argon" or is_argon_model(model):
+        if model == "hydrogen" or is_hydrogen_model(model):
+            hydrogen_q = qd.get("hydrogen", {})
+            group_q = hydrogen_q if hydrogen_q.get("has_dedicated_bucket") else qd.get("gemini", {})
+        elif model == "argon" or is_argon_model(model):
             argon_q = qd.get("argon", {})
             group_q = argon_q if argon_q.get("has_dedicated_bucket") else qd.get("gemini", {})
         else:

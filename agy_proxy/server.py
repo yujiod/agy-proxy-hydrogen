@@ -104,12 +104,23 @@ def _get_default_passthrough_response(action_key: str) -> dict[str, Any]:
             supports_thinking = (
                 any(k in m for k in ("high", "medium", "low", "thinking", "tiered", "deepagent"))
                 or "argon" in m
+                or "hydrogen" in m
             )
             thinking_budget = -1
-            thinking_level = 3 if ("high" in m or m == "gemini-4-argon") else 2
+            thinking_level = 3 if ("high" in m or m in ("gemini-4-argon", "gemini-4-hydrogen")) else 2
             if "deepagent" in m:
                 thinking_budget = 64000
                 thinking_level = 3
+            elif "hydrogen" in m:
+                thinking_budget = -1
+                if "extra" in m or "xhigh" in m:
+                    thinking_level = 4
+                elif "low" in m:
+                    thinking_level = 1
+                elif "medium" in m or "med" in m:
+                    thinking_level = 2
+                else:
+                    thinking_level = 3
             elif "argon" in m:
                 thinking_budget = -1
                 thinking_level = 1 if "low" in m else (2 if ("medium" in m or "med" in m) else 3)
@@ -136,7 +147,7 @@ def _get_default_passthrough_response(action_key: str) -> dict[str, Any]:
                     }
                 },
             }
-            if "argon" in m:
+            if "argon" in m or "hydrogen" in m:
                 m_entry["maxOutputTokens"] = 65536
                 m_entry["supportsImages"] = True
                 m_entry["supportsVideo"] = True
@@ -151,6 +162,11 @@ def _get_default_passthrough_response(action_key: str) -> dict[str, Any]:
                 m_entry["thinkingLevel"] = thinking_level
             models_dict[m] = m_entry
         sorted_model_ids = [
+            "gemini-4-hydrogen-high",
+            "gemini-4-hydrogen-extra",
+            "gemini-4-hydrogen-medium",
+            "gemini-4-hydrogen-low",
+            "gemini-4-hydrogen",
             "gemini-4-argon-high",
             "gemini-4-argon-medium",
             "gemini-4-argon-low",
@@ -268,6 +284,10 @@ def _get_default_passthrough_response(action_key: str) -> dict[str, Any]:
                 },
                 "agentExperiences": {
                     "experienceNames": [
+                        "gemini-4-hydrogen-high",
+                        "gemini-4-hydrogen-extra",
+                        "gemini-4-hydrogen-medium",
+                        "gemini-4-hydrogen-low",
                         "gemini-4-argon-high",
                         "gemini-4-argon-medium",
                         "gemini-4-argon-low",
@@ -277,7 +297,7 @@ def _get_default_passthrough_response(action_key: str) -> dict[str, Any]:
                         "claude-opus-5-5-high",
                         "claude-sonnet-5-5-high",
                     ],
-                    "defaultExperience": "gemini-4-argon-medium",
+                    "defaultExperience": "gemini-4-hydrogen-high",
                 },
                 "tieredFlashLiteExperiences": {
                     "experienceNames": ["gemini-3.5-flash-lite"],
@@ -348,6 +368,19 @@ def _get_default_passthrough_response(action_key: str) -> dict[str, Any]:
                     ],
                     "displayName": "Claude and GPT models",
                     "description": "Models within this group: Claude Opus, Claude Sonnet, GPT-OSS",
+                },
+                {
+                    "buckets": [
+                        {
+                            "bucketId": "gemini-hydrogen-wtu-weekly",
+                            "displayName": "Weekly Limit Remaining",
+                            "window": "weekly",
+                            "description": "You have full weekly limit remaining.",
+                            "remainingFraction": 1.0,
+                        },
+                    ],
+                    "displayName": "Gemini 4 Hydrogen",
+                    "description": "Gemini 4 Hydrogen uses an isolated weekly quota.",
                 },
                 {
                     "buckets": [
@@ -3124,6 +3157,11 @@ def create_app(
         )
         # Gather available proxy models for Claude Code
         available_models = [
+            "anthropic.gemini-4-hydrogen-high",
+            "anthropic.gemini-4-hydrogen-extra",
+            "anthropic.gemini-4-hydrogen-medium",
+            "anthropic.gemini-4-hydrogen-low",
+            "anthropic.gemini-4-hydrogen-web-high",
             "anthropic.gemini-4-argon-high",
             "anthropic.gemini-4-argon-medium",
             "anthropic.gemini-4-argon-low",
@@ -4090,11 +4128,13 @@ def create_app(
 
                 from agy_proxy.models import (
                     is_argon_model,
+                    is_hydrogen_model,
                     is_claude_5_5_model,
                     get_claude_fallback_model,
                     is_deepagent_model,
                     is_gemini_web_model,
                     resolve_cloudcode_argon_model,
+                    resolve_cloudcode_hydrogen_model,
                 )
 
                 # 1. DeepAgent swarm presets: route through flagship backend with 64k thinking budget
@@ -4157,6 +4197,17 @@ def create_app(
                             if "request" in candidate_body and isinstance(candidate_body["request"], dict):
                                 candidate_body["request"]["model"] = target_m
 
+                # 4b. Map bare Gemini 4 Hydrogen alias to explicit CloudCode Hydrogen model ID (gemini-4-hydrogen-high)
+                if is_hydrogen_model(target_m):
+                    resolved_hydrogen = resolve_cloudcode_hydrogen_model(target_m)
+                    if resolved_hydrogen != target_m:
+                        logger.info("[%s] Auto-mapping %s -> %s for CloudCode backend", acc_label, target_m, resolved_hydrogen)
+                        target_m = resolved_hydrogen
+                        if isinstance(candidate_body, dict):
+                            candidate_body["model"] = target_m
+                            if "request" in candidate_body and isinstance(candidate_body["request"], dict):
+                                candidate_body["request"]["model"] = target_m
+
 
                 # Ensure generation payload strictly adheres to CloudCode StreamGenerateContentRequest schema
                 if is_generation and isinstance(candidate_body, dict):
@@ -4188,6 +4239,25 @@ def create_app(
 
                     candidate_body["model"] = target_m
                     candidate_body["request"]["model"] = target_m
+
+                    if is_hydrogen_model(target_m):
+                        gen_cfg = candidate_body["request"].setdefault("generationConfig", {})
+                        if isinstance(gen_cfg, dict):
+                            gen_cfg.setdefault("maxOutputTokens", 65536)
+                            tc = gen_cfg.setdefault("thinkingConfig", {})
+                            if isinstance(tc, dict):
+                                tc.setdefault("includeThoughts", True)
+                                if "extra" in target_m.lower() or "xhigh" in target_m.lower():
+                                    hydro_lvl = "XHIGH"
+                                elif "low" in target_m.lower():
+                                    hydro_lvl = "LOW"
+                                elif "medium" in target_m.lower() or "med" in target_m.lower():
+                                    hydro_lvl = "MEDIUM"
+                                else:
+                                    hydro_lvl = "HIGH"
+                                tc.setdefault("thinkingLevel", hydro_lvl)
+                                if tc.get("thinkingBudget") == -1 or "thinkingBudget" in tc:
+                                    tc.pop("thinkingBudget", None)
 
                     if is_argon_model(target_m):
                         gen_cfg = candidate_body["request"].setdefault("generationConfig", {})
